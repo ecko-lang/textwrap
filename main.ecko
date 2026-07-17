@@ -1,0 +1,90 @@
+# textwrap - wrap, fill, indent, dedent, and shorten text for Ecko.
+#
+#   import textwrap
+#
+#   textwrap.wrap("a long sentence", 40)   # -> [lines]
+#   textwrap.fill("a long sentence", 40)   # -> a wrapped string
+#   textwrap.indent(block, "  ")           # prefix each non-blank line
+#   textwrap.dedent(block)                 # strip common leading whitespace
+#   textwrap.shorten("a long sentence", 20) # "a long..." with an ellipsis
+#
+# Handy for building prompts and formatting terminal output. Pure Ecko; no
+# capabilities.
+
+fn drop_n(l, n) {
+    if n <= 0 { l } else if n >= len(l) { [] } else { reverse(take(reverse(l), len(l) - n)) }
+}
+
+fn substr(s, start) = join(drop_n(chars(s), start), "")
+
+fn take_str(s, n) = join(take(chars(s), n), "")
+
+# Split on any whitespace, dropping empties (collapses runs of whitespace).
+fn words_of(text) {
+    normalized = replace(replace(replace(text, "\n", " "), "\t", " "), "\r", " ")
+    filter(split(normalized, " "), |w| w != "")
+}
+
+fn leading_ws_len(line) {
+    cs = chars(line)
+    mut i = 0
+    while i < len(cs) and (cs[i] == " " or cs[i] == "\t") {
+        i = i + 1
+    }
+    i
+}
+
+# wrap(text, width) -> [lines], greedily filling each line up to `width`.
+# Words longer than `width` are kept whole (not broken) on their own line.
+export fn wrap(text, width) {
+    mut lines = []
+    mut cur = ""
+    for word in words_of(text) {
+        if cur == "" { cur = word } else if len(cur) + 1 + len(word) <= width { cur = cur + " " + word } else {
+            lines = push(lines, cur)
+            cur = word
+        }
+    }
+    if cur != "" { lines = push(lines, cur) }
+    lines
+}
+
+# fill(text, width) -> the wrapped text as one string.
+export fn fill(text, width) = join(wrap(text, width), "\n")
+
+# indent(text, prefix) -> every non-blank line prefixed.
+export fn indent(text, prefix) = join(
+    map(split(text, "\n"), |line| if line == "" { line } else { prefix + line }),
+    "\n",
+)
+
+# dedent(text) -> the common leading whitespace removed from every line.
+export fn dedent(text) {
+    lines = split(text, "\n")
+    mut common = -1
+    for line in lines {
+        if trim(line) != "" {
+            n = leading_ws_len(line)
+            if common < 0 or n < common { common = n }
+        }
+    }
+    c = if common < 0 { 0 } else { common }
+    join(map(lines, |line| substr(line, c)), "\n")
+}
+
+# shorten(text, width) -> whitespace collapsed and truncated to fit `width`,
+# with an "..." ellipsis, broken at a word boundary.
+export fn shorten(text, width) {
+    ph = "..."
+    collapsed = join(words_of(text), " ")
+    if len(collapsed) <= width { return collapsed }
+    mut result = ""
+    mut done = false
+    for word in words_of(text) {
+        if not done {
+            cand = if result == "" { word } else { result + " " + word }
+            if len(cand) + 1 + len(ph) <= width { result = cand } else { done = true }
+        }
+    }
+    if result == "" { take_str(ph, width) } else { result + " " + ph }
+}

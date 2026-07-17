@@ -1,0 +1,14 @@
+# textwrap demo.
+import "./main.ecko"
+textwrap = main
+
+para = "Ecko is a language where ai is a keyword, not a library, with typed AI output, pipelines, and pattern matching."
+
+print("--- filled to 40 ---")
+print(textwrap.fill(para, 40))
+print("")
+print("--- indented as a quote ---")
+print(textwrap.indent(textwrap.fill(para, 40), "  | "))
+print("")
+short = textwrap.shorten(para, 30)
+print("shortened to 30: {short}")
