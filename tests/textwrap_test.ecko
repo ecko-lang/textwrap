@@ -3,7 +3,7 @@ import std.test
 import "../main.ecko"
 tw = main
 
-test.case("wrap breaks text into width-limited lines, preserving words", || {
+test.case("wrap breaks text into width-limited lines, preserving words", fn() {
     lines = tw.wrap("the quick brown fox jumps over", 12)
     for line in lines {
         test.ok(len(line) <= 12, "line within width")
@@ -11,25 +11,25 @@ test.case("wrap breaks text into width-limited lines, preserving words", || {
     test.eq(join(lines, " "), "the quick brown fox jumps over")
 })
 
-test.case("fill joins wrapped lines with newlines", || {
+test.case("fill joins wrapped lines with newlines", fn() {
     test.eq(tw.fill("aaa bbb ccc", 7), "aaa bbb\nccc")
 })
 
-test.case("indent prefixes non-blank lines", || {
+test.case("indent prefixes non-blank lines", fn() {
     test.eq(tw.indent("a\nb", "> "), "> a\n> b")
     test.eq(tw.indent("a\n\nb", "> "), "> a\n\n> b")
 })
 
-test.case("dedent removes the common leading whitespace", || {
+test.case("dedent removes the common leading whitespace", fn() {
     test.eq(tw.dedent("    a\n    b"), "a\nb")
     test.eq(tw.dedent("  a\n    b"), "a\n  b")
 })
 
-test.case("shorten collapses whitespace and truncates with an ellipsis", || {
+test.case("shorten collapses whitespace and truncates with an ellipsis", fn() {
     test.eq(tw.shorten("hello world", 20), "hello world")
     test.eq(tw.shorten("hello world foo bar", 12), "hello ...")
 })
 
-test.case("whitespace is collapsed by wrap", || {
+test.case("whitespace is collapsed by wrap", fn() {
     test.eq(tw.wrap("a   b\tc", 20), ["a b c"])
 })

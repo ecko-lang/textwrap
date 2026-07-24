@@ -22,7 +22,7 @@ fn take_str(s, n) = join(take(chars(s), n), "")
 # Split on any whitespace, dropping empties (collapses runs of whitespace).
 fn words_of(text) {
     normalized = replace(replace(replace(text, "\n", " "), "\t", " "), "\r", " ")
-    filter(split(normalized, " "), |w| w != "")
+    filter(split(normalized, " "), fn(w) w != "")
 }
 
 fn leading_ws_len(line) {
@@ -54,7 +54,7 @@ export fn fill(text, width) = join(wrap(text, width), "\n")
 
 # indent(text, prefix) -> every non-blank line prefixed.
 export fn indent(text, prefix) = join(
-    map(split(text, "\n"), |line| if line == "" { line } else { prefix + line }),
+    map(split(text, "\n"), fn(line) if line == "" { line } else { prefix + line }),
     "\n",
 )
 
@@ -69,7 +69,7 @@ export fn dedent(text) {
         }
     }
     c = if common < 0 { 0 } else { common }
-    join(map(lines, |line| substr(line, c)), "\n")
+    join(map(lines, fn(line) substr(line, c)), "\n")
 }
 
 # shorten(text, width) -> whitespace collapsed and truncated to fit `width`,

@@ -1,13 +1,12 @@
-# textwrap
+# Textwrap - Ecko Std Lib Package
 
 Wrap, fill, indent, dedent, and shorten text for [Ecko](https://ecko.sh),
-written in Ecko — handy for building prompts and formatting terminal output.
-Pure — no capabilities.
+written in Ecko - handy for building prompts and formatting terminal output.
 
 ## Install
 
 ```bash
-ecko add https://github.com/ecko-sh/textwrap
+ecko get github.com/ecko-sh/textwrap
 ```
 
 ## Usage
@@ -45,4 +44,4 @@ ecko test tests/
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT - see [LICENSE](LICENSE).

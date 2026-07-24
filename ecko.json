@@ -1,6 +1,6 @@
 {
-  "name": "textwrap",
-  "version": "0.1.0",
+  "module": "github.com/ecko-sh/textwrap",
+  "version": "0.9.1",
   "entrypoint": "main.ecko",
   "description": "Wrap, fill, indent, dedent, and shorten text for Ecko - prompt building and terminal output. Pure - no capabilities.",
   "author": "Sean Nieuwoudt <sean@underwulf.com>",
