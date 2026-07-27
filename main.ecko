@@ -40,7 +40,11 @@ export fn wrap(text, width) {
     mut lines = []
     mut cur = ""
     for word in words_of(text) {
-        if cur == "" { cur = word } else if len(cur) + 1 + len(word) <= width { cur = cur + " " + word } else {
+        if cur == "" {
+            cur = word
+        } else if len(cur) + 1 + len(word) <= width {
+            cur = cur + " " + word
+        } else {
             lines = push(lines, cur)
             cur = word
         }
