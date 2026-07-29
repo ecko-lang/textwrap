@@ -34,8 +34,8 @@ fn leading_ws_len(line) {
     i
 }
 
-# wrap(text, width) -> [lines], greedily filling each line up to `width`.
-# Words longer than `width` are kept whole (not broken) on their own line.
+## wrap(text, width) -> [lines], greedily filling each line up to `width`.
+## Words longer than `width` are kept whole (not broken) on their own line.
 export fn wrap(text, width) {
     mut lines = []
     mut cur = ""
@@ -53,16 +53,16 @@ export fn wrap(text, width) {
     lines
 }
 
-# fill(text, width) -> the wrapped text as one string.
+## fill(text, width) -> the wrapped text as one string.
 export fn fill(text, width) = join(wrap(text, width), "\n")
 
-# indent(text, prefix) -> every non-blank line prefixed.
+## indent(text, prefix) -> every non-blank line prefixed.
 export fn indent(text, prefix) = join(
     map(split(text, "\n"), fn(line) if line == "" { line } else { prefix + line }),
     "\n",
 )
 
-# dedent(text) -> the common leading whitespace removed from every line.
+## dedent(text) -> the common leading whitespace removed from every line.
 export fn dedent(text) {
     lines = split(text, "\n")
     mut common = -1
@@ -76,8 +76,8 @@ export fn dedent(text) {
     join(map(lines, fn(line) substr(line, c)), "\n")
 }
 
-# shorten(text, width) -> whitespace collapsed and truncated to fit `width`,
-# with an "..." ellipsis, broken at a word boundary.
+## shorten(text, width) -> whitespace collapsed and truncated to fit `width`,
+## with an "..." ellipsis, broken at a word boundary.
 export fn shorten(text, width) {
     ph = "..."
     collapsed = join(words_of(text), " ")
