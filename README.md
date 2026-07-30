@@ -6,7 +6,7 @@ written in Ecko - handy for building prompts and formatting terminal output.
 ## Install
 
 ```bash
-ecko get github.com/ecko-sh/textwrap
+ecko get github.com/ecko-lang/textwrap
 ```
 
 ## Usage
