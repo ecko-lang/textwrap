@@ -1,94 +1,186 @@
-# textwrap - wrap, fill, indent, dedent, and shorten text for Ecko.
+# textwrap - wrap, fill, indent, dedent and shorten text for Ecko.
 #
-#   import textwrap
-#
-#   textwrap.wrap("a long sentence", 40)   # -> [lines]
-#   textwrap.fill("a long sentence", 40)   # -> a wrapped string
-#   textwrap.indent(block, "  ")           # prefix each non-blank line
-#   textwrap.dedent(block)                 # strip common leading whitespace
-#   textwrap.shorten("a long sentence", 20) # "a long..." with an ellipsis
-#
-# Handy for building prompts and formatting terminal output. Pure Ecko; no
-# capabilities.
+# Widths are terminal columns, not characters: CJK and emoji take two, and
+# combining marks none (columns.ecko). Pure Ecko; no capabilities.
 
-fn drop_n(l, n) {
-    if n <= 0 { l } else if n >= len(l) { [] } else { reverse(take(reverse(l), len(l) - n)) }
+import std.str
+import "./columns.ecko"
+
+PLACEHOLDER = "..."
+
+fn bad(reason, message) = error({ kind: "bug", reason: reason, message: message })
+
+fn need_text(fname, arg, v) {
+    unless type_of(v) == "string" {
+        bad("bad_argument", "textwrap.{fname}: {arg} must be a string, got {type_of(v)}")
+    }
 }
 
-fn substr(s, start) = join(drop_n(chars(s), start), "")
-
-fn take_str(s, n) = join(take(chars(s), n), "")
+fn need_width(fname, width, least) {
+    unless type_of(width) == "int" and width >= least {
+        bad("bad_width", "textwrap.{fname}: width must be an Int of at least {least}, got {width}")
+    }
+}
 
 # Split on any whitespace, dropping empties (collapses runs of whitespace).
-fn words_of(text) {
-    normalized = replace(replace(replace(text, "\n", " "), "\t", " "), "\r", " ")
-    filter(split(normalized, " "), fn(w) w != "")
+fn words_of(text) = str.split_whitespace(text)
+
+fn leading_ws(line) {
+    mut out = ""
+    mut done = false
+    for c in str.chars(line) {
+        if not done and (c == " " or c == "\t") { out = out + c } else { done = true }
+    }
+    out
 }
 
-fn leading_ws_len(line) {
-    cs = chars(line)
+fn common_prefix(a, b) {
+    ac = str.chars(a)
+    bc = str.chars(b)
     mut i = 0
-    while i < len(cs) and (cs[i] == " " or cs[i] == "\t") {
+    while i < len(ac) and i < len(bc) and ac[i] == bc[i] {
         i = i + 1
     }
-    i
+    join(take(ac, i), "")
 }
 
-## wrap(text, width) -> [lines], greedily filling each line up to `width`.
-## Words longer than `width` are kept whole (not broken) on their own line.
+fn is_blank(line) = str.trim(line) == ""
+
+## Word-wrap `text` into a list of lines, each at most `width` terminal columns.
+##
+## Runs of whitespace, newlines included, collapse to one space, so paragraph
+## breaks do not survive; wrap each paragraph separately to keep them. A word
+## wider than `width` is kept whole on a line of its own. CJK characters and
+## emoji count as two columns, combining marks as none.
+##
+## errors: `bug`/`bad_argument` when `text` is not a string; `bug`/`bad_width`
+## when `width` is not an Int of at least 1.
+##
+## example:
+##   textwrap.wrap("a long sentence here", 12)   # ["a long", "sentence", "here"]
 export fn wrap(text, width) {
+    need_text("wrap", "text", text)
+    need_width("wrap", width, 1)
     mut lines = []
     mut cur = ""
+    mut cur_w = 0
     for word in words_of(text) {
+        ww = columns.columns(word)
         if cur == "" {
             cur = word
-        } else if len(cur) + 1 + len(word) <= width {
+            cur_w = ww
+        } else if cur_w + 1 + ww <= width {
             cur = cur + " " + word
+            cur_w = cur_w + 1 + ww
         } else {
             lines = push(lines, cur)
             cur = word
+            cur_w = ww
         }
     }
     if cur != "" { lines = push(lines, cur) }
     lines
 }
 
-## fill(text, width) -> the wrapped text as one string.
-export fn fill(text, width) = join(wrap(text, width), "\n")
-
-## indent(text, prefix) -> every non-blank line prefixed.
-export fn indent(text, prefix) = join(
-    map(split(text, "\n"), fn(line) if line == "" { line } else { prefix + line }),
-    "\n",
-)
-
-## dedent(text) -> the common leading whitespace removed from every line.
-export fn dedent(text) {
-    lines = split(text, "\n")
-    mut common = -1
-    for line in lines {
-        if trim(line) != "" {
-            n = leading_ws_len(line)
-            if common < 0 or n < common { common = n }
-        }
-    }
-    c = if common < 0 { 0 } else { common }
-    join(map(lines, fn(line) substr(line, c)), "\n")
+## The lines of `wrap(text, width)` joined with newlines.
+##
+## errors: `bug`/`bad_argument` when `text` is not a string; `bug`/`bad_width`
+## when `width` is not an Int of at least 1.
+##
+## example:
+##   textwrap.fill("a long sentence here", 12)   # "a long\nsentence\nhere"
+export fn fill(text, width) {
+    need_text("fill", "text", text)
+    need_width("fill", width, 1)
+    join(wrap(text, width), "\n")
 }
 
-## shorten(text, width) -> whitespace collapsed and truncated to fit `width`,
-## with an "..." ellipsis, broken at a word boundary.
-export fn shorten(text, width) {
-    ph = "..."
-    collapsed = join(words_of(text), " ")
-    if len(collapsed) <= width { return collapsed }
-    mut result = ""
-    mut done = false
-    for word in words_of(text) {
-        if not done {
-            cand = if result == "" { word } else { result + " " + word }
-            if len(cand) + 1 + len(ph) <= width { result = cand } else { done = true }
+## `text` with `prefix` added to the start of every line that is not blank.
+##
+## A line holding only whitespace (spaces, tabs, a `\r`) is left as it is.
+##
+## errors: `bug`/`bad_argument` when `text` or `prefix` is not a string.
+##
+## example:
+##   textwrap.indent("a\n\nb", "> ")   # "> a\n\n> b"
+export fn indent(text, prefix) {
+    need_text("indent", "text", text)
+    need_text("indent", "prefix", prefix)
+    join(
+        map(str.split(text, "\n"), fn(line) if is_blank(line) { line } else { prefix + line }),
+        "\n",
+    )
+}
+
+## `text` with the leading whitespace every non-blank line shares removed.
+##
+## The shared prefix is compared character by character, as Python's
+## `textwrap.dedent` does, so a tab and four spaces have nothing in common and
+## both lines are left alone. Lines holding only whitespace become empty.
+##
+## errors: `bug`/`bad_argument` when `text` is not a string.
+##
+## example:
+##   textwrap.dedent("    a\n      b")   # "a\n  b"
+export fn dedent(text) {
+    need_text("dedent", "text", text)
+    lines = str.split(text, "\n")
+    mut common = null
+    for line in lines {
+        unless is_blank(line) {
+            ws = leading_ws(line)
+            common = if is_null(common) { ws } else { common_prefix(common, ws) }
         }
     }
-    if result == "" { take_str(ph, width) } else { result + " " + ph }
+    cut = len(str.chars(common ?? ""))
+    join(
+        map(
+            lines,
+            fn(line) if is_blank(line) {
+                ""
+            } else {
+                str.substring(line, cut, len(str.chars(line)))
+            },
+        ),
+        "\n",
+    )
+}
+
+## `text` with whitespace collapsed, cut to fit `width` columns with a `...`.
+##
+## Text that already fits comes back with only its whitespace collapsed. Longer
+## text is cut at a word boundary and ends `" ..."`; when even the first word
+## does not fit, that word is cut and ends `"..."`. Widths are terminal
+## columns, as in `wrap`.
+##
+## errors: `bug`/`bad_argument` when `text` is not a string; `bug`/`bad_width`
+## when `width` is not an Int of at least 4 (one column plus the `...`).
+##
+## example:
+##   textwrap.shorten("a long sentence here", 12)   # "a long ..."
+export fn shorten(text, width) {
+    need_text("shorten", "text", text)
+    need_width("shorten", width, len(PLACEHOLDER) + 1)
+    words = words_of(text)
+    collapsed = join(words, " ")
+    if columns.columns(collapsed) <= width { return collapsed }
+    budget = width - 1 - len(PLACEHOLDER)
+    mut result = ""
+    mut used = 0
+    mut done = false
+    for word in words {
+        unless done {
+            ww = columns.columns(word)
+            next = if result == "" { ww } else { used + 1 + ww }
+            if next <= budget {
+                result = if result == "" { word } else { result + " " + word }
+                used = next
+            } else { done = true }
+        }
+    }
+    if result == "" {
+        columns.take_columns(words[0], width - len(PLACEHOLDER)) + PLACEHOLDER
+    } else {
+        result + " " + PLACEHOLDER
+    }
 }

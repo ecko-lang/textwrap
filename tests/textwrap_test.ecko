@@ -33,3 +33,58 @@ test.case("shorten collapses whitespace and truncates with an ellipsis", fn() {
 test.case("whitespace is collapsed by wrap", fn() {
     test.eq(tw.wrap("a   b\tc", 20), ["a b c"])
 })
+
+# --- fixes ------------------------------------------------------------------
+
+fn bug_reason(f) = try {
+    f()
+    "no error"
+} catch (e) { "{get(e, "kind")}/{get(e, "reason")}" }
+
+test.case("dedent leaves lines alone when tabs and spaces share no prefix", fn() {
+    test.eq(tw.dedent("\ta\n    b"), "\ta\n    b")
+    test.eq(tw.dedent("\t  a\n\t    b"), "a\n  b")
+    test.eq(tw.dedent("  a\n\n    b"), "a\n\n  b")
+    test.eq(tw.dedent("  a\n \n  b"), "a\n\nb")
+})
+
+test.case("a width below one is a bug, not garbage", fn() {
+    test.eq(bug_reason(fn() tw.wrap("a b c", 0)), "bug/bad_width")
+    test.eq(bug_reason(fn() tw.fill("a b c", -1)), "bug/bad_width")
+    test.eq(bug_reason(fn() tw.shorten("hello world", -5)), "bug/bad_width")
+    test.eq(bug_reason(fn() tw.shorten("hello world", 2)), "bug/bad_width")
+    test.eq(bug_reason(fn() tw.wrap("a", 2.5)), "bug/bad_width")
+    test.eq(bug_reason(fn() tw.wrap(42, 10)), "bug/bad_argument")
+    test.eq(bug_reason(fn() tw.indent("a", 3)), "bug/bad_argument")
+    test.eq(bug_reason(fn() tw.dedent(null)), "bug/bad_argument")
+})
+
+test.case("shorten cuts an oversized first word rather than dropping it", fn() {
+    test.eq(tw.shorten("supercalifragilistic word", 10), "superca...")
+    test.eq(tw.shorten("hello world", 4), "h...")
+})
+
+test.case("indent skips whitespace-only lines", fn() {
+    test.eq(tw.indent("a\n   \nb", "> "), "> a\n   \n> b")
+    test.eq(tw.indent("a\n\r\nb", "> "), "> a\n\r\n> b")
+})
+
+test.case("widths are terminal columns: CJK and emoji take two", fn() {
+    test.eq(tw.wrap("日本語 日本語", 6), ["日本語", "日本語"])
+    test.eq(tw.wrap("日本語 ab", 9), ["日本語 ab"])
+    test.eq(tw.shorten("日本語 日本語 日本語", 12), "日本語 ...")
+    test.eq(tw.wrap("e\u{301}e\u{301} x", 4), ["e\u{301}e\u{301} x"])
+})
+
+test.case("empty input and paragraph breaks", fn() {
+    test.eq(tw.wrap("", 10), [])
+    test.eq(tw.fill("", 10), "")
+    test.eq(tw.shorten("", 10), "")
+    test.eq(tw.fill("para one.\n\npara two.", 40), "para one. para two.")
+    test.eq(tw.dedent(""), "")
+    test.eq(tw.indent("", "> "), "")
+})
+
+test.case("a word wider than the width stays whole on its own line", fn() {
+    test.eq(tw.wrap("a supercalifragilistic b", 5), ["a", "supercalifragilistic", "b"])
+})
